@@ -89,6 +89,9 @@ const EXERCISES = [
   { id: "kb_swing_2h", name: "KB Swing (2-Hand)", day: "cond", range: [12, 20], imp: "kettlebell" },
   { id: "kb_swing_1h", name: "KB Swing (1-Hand, per side)", day: "cond", range: [8, 15], imp: "kettlebell" },
   { id: "kb_clean_press", name: "KB Clean & Press (per side)", day: "cond", range: [5, 10], imp: "kettlebell" },
+  { id: "pushups", name: "Pushups", day: "cond", range: [15, 30], imp: "bodyweight" },
+{ id: "crunches", name: "Crunches", day: "cond", range: [20, 40], imp: "bodyweight" },
+  
 
   // CARDIO
   { id: "zone2", name: "Zone 2 Cardio (walk/jog)", day: "cardio", range: [25, 40], imp: "cardio" }
