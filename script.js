@@ -204,7 +204,20 @@ function nextTarget(ex, last) {
 // =======================
 // WORKOUT BUILDER
 // =======================
-function pickWorkoutForDay(day) {
+if (day === "cond") {
+  const twoHandSwing = pool.find(e => e.id === "kb_swing_2h");
+  const oneHandSwing = pool.find(e => e.id === "kb_swing_1h");
+
+  // Randomly pick one of the two
+  const chosenSwing = Math.random() < 0.5 ? twoHandSwing : oneHandSwing;
+
+  return [
+    chosenSwing,
+    pool.find(e => e.id === "kb_clean_press"),
+    pool.find(e => e.id === "pushups"),
+    pool.find(e => e.id === "crunches")
+  ].filter(Boolean);
+}
   const pool = EXERCISES.filter(e => e.day === day);
 
   if (day === "cond") {
