@@ -1,0 +1,65 @@
+<div class="wrap">
+  <h1>Garage Gym Planner</h1>
+
+  <div class="card">
+    <h2>Today’s Workout</h2>
+    <div class="row">
+      <label for="dayType">Workout type</label>
+      <select id="dayType">
+        <option value="auto">Auto (recommended)</option>
+        <option value="push">Push</option>
+        <option value="pull">Pull</option>
+        <option value="legs">Legs</option>
+        <option value="cond">Conditioning</option>
+        <option value="cardio">Cardio</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <button id="genBtn">Generate workout</button>
+      <button id="resetBtn" class="ghost">Reset</button>
+    </div>
+
+    <div id="workout"></div>
+  </div>
+
+  <div class="card">
+    <h2>Log Results</h2>
+    <p class="small">Tap “Log” on each exercise after you complete it. The app uses your last log to suggest progressive overload next time.</p>
+    <div id="logArea"></div>
+  </div>
+
+  <div class="card">
+    <h2>History</h2>
+    <div class="row">
+      <button id="exportBtn" class="ghost">Export history (copy)</button>
+      <button id="wipeBtn" class="danger">Wipe all history</button>
+    </div>
+    <pre id="history" class="history"></pre>
+  </div>
+</div>
+<div class="card">
+  <h2>Equipment</h2>
+  <p class="small">Edit what you own. Use comma-separated numbers (lbs). Example: 30,35,40</p>
+
+  <label>Dumbbells (pairs)</label>
+  <input id="eq_dbs" placeholder="30,35,40" />
+
+  <label>Kettlebells</label>
+  <input id="eq_kbs" placeholder="30,40,50,70" />
+
+  <label>Barbell increase step (lbs)</label>
+  <select id="eq_bar_inc">
+    <option value="2.5">2.5</option>
+    <option value="5" selected>5</option>
+    <option value="10">10</option>
+  </select>
+
+  <div class="row">
+    <button id="eq_save">Save equipment</button>
+    <button id="eq_reset" class="ghost">Reset to default</button>
+  </div>
+
+  <p id="eq_status" class="small"></p>
+</div>
+<button id="resetCycleBtn">Reset Rotation</button>
