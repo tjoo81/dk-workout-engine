@@ -211,4 +211,70 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
+  // -------- EMOM TIMER --------
+
+let timerInterval = null;
+let remainingSeconds = 0;
+let totalSeconds = 0;
+
+function updateTimerDisplay() {
+  const min = Math.floor(remainingSeconds / 60);
+  const sec = remainingSeconds % 60;
+  const formatted = `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  const el = $("timerDisplay");
+  if (el) el.textContent = formatted;
+}
+
+function beep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = ctx.createOscillator();
+  oscillator.type = "sine";
+  oscillator.frequency.value = 800;
+  oscillator.connect(ctx.destination);
+  oscillator.start();
+  setTimeout(() => oscillator.stop(), 150);
+}
+
+function startTimer() {
+  if (timerInterval) return;
+
+  if (remainingSeconds <= 0) {
+    const mins = Number($("timerMinutes")?.value) || 0;
+    totalSeconds = mins * 60;
+    remainingSeconds = totalSeconds;
+  }
+
+  timerInterval = setInterval(() => {
+    remainingSeconds--;
+
+    if (remainingSeconds % 60 === 0) {
+      beep(); // minute beep
+    }
+
+    if (remainingSeconds <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      beep();
+    }
+
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function resetTimer() {
+  pauseTimer();
+  remainingSeconds = 0;
+  updateTimerDisplay();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  $("startTimer")?.addEventListener("click", startTimer);
+  $("pauseTimer")?.addEventListener("click", pauseTimer);
+  $("resetTimer")?.addEventListener("click", resetTimer);
+});
 })();
