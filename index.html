@@ -25,6 +25,21 @@
     <p id="status" class="small">Status: loading…</p>
 
     <div class="card">
+  <h2>Interval Timer (EMOM)</h2>
+
+  <label>Total Minutes</label>
+  <input id="timerMinutes" type="number" value="30" />
+
+  <div style="font-size:2rem; margin:10px 0;">
+    <span id="timerDisplay">00:00</span>
+  </div>
+
+  <button id="startTimer">Start</button>
+  <button id="pauseTimer" class="ghost">Pause</button>
+  <button id="resetTimer" class="ghost">Reset</button>
+</div>
+
+    <div class="card">
       <h2>Today’s Workout</h2>
 
       <label for="dayType" class="small">Workout type</label>
