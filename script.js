@@ -451,7 +451,17 @@ function wireResetRotationButtonIfPresent() {
 // MAIN BUTTON
 // =======================
 document.getElementById("genBtn").addEventListener("click", () => {
-  const day = nextDay();
+  const dayTypeEl = document.getElementById("dayType");
+  const choice = dayTypeEl ? dayTypeEl.value : "auto";
+
+  // Auto = use rotation
+  let day;
+  if (choice === "auto") {
+    day = nextDay();
+  } else {
+    day = choice; // manual selection
+  }
+
   currentExercises = pickWorkoutForDay(day);
   renderWorkout(day, currentExercises);
 });
