@@ -1,22 +1,31 @@
-(() => { setTimeout(() => {
-  const s = document.getElementById("status");
-  if (s) s.textContent = "Status: script loaded ✅";
-}, 0);
+(() => {
   const $ = (id) => document.getElementById(id);
 
-  const STORE_KEY = "dk_workout_history_v99";
-  const LAST_DAY_KEY = "dk_last_day_v99";
-
+  const STORE_KEY = "dk_workout_history_v500";
+  const LAST_DAY_KEY = "dk_last_day_v500";
   const DAY_CYCLE = ["push", "pull", "legs", "cond", "cardio"];
 
-  // ---------- UI status (optional; only works if you add <p id="status">)
   function setStatus(msg) {
     const s = $("status");
     if (s) s.textContent = "Status: " + msg;
   }
 
   window.addEventListener("error", (e) => setStatus("ERROR: " + (e?.message || "unknown")));
-  window.addEventListener("unhandledrejection", (e) => setStatus("PROMISE ERROR: " + (e?.reason?.message || e?.reason || "unknown")));
+  window.addEventListener("unhandledrejection", (e) =>
+    setStatus("PROMISE ERROR: " + (e?.reason?.message || e?.reason || "unknown"))
+  );
+
+  function stamp() {
+    return new Date().toLocaleString();
+  }
+
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); }
+    catch { return {}; }
+  }
+  function saveHistory(h) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(h));
+  }
 
   function getLastDay() {
     return localStorage.getItem(LAST_DAY_KEY) || "";
@@ -41,19 +50,7 @@
       .filter(n => Number.isFinite(n) && n > 0);
   }
 
-  function stamp() {
-    return new Date().toLocaleString();
-  }
-
-  function loadHistory() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); }
-    catch { return {}; }
-  }
-  function saveHistory(h) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(h));
-  }
-
-  // ---------- EXERCISES (edit here)
+  // ---------- EXERCISES ----------
   const EXERCISES = [
     // PUSH
     { id: "bb_bench", name: "Barbell Bench Press", day: "push", range: [5, 8], imp: "barbell" },
@@ -74,7 +71,7 @@
     { id: "kb_sumo", name: "KB Sumo Squat", day: "legs", range: [10, 15], imp: "kettlebell" },
     { id: "bb_rdl", name: "Barbell RDL", day: "legs", range: [8, 12], imp: "barbell" },
 
-    // CONDITIONING
+    // CONDITIONING (workout generator)
     { id: "kb_swing_2h", name: "KB Swing (2-Hand)", day: "cond", range: [12, 20], imp: "kettlebell" },
     { id: "kb_swing_1h", name: "KB Swing (1-Hand, per side)", day: "cond", range: [8, 15], imp: "kettlebell" },
     { id: "kb_clean_press", name: "KB Clean & Press (per side)", day: "cond", range: [5, 10], imp: "kettlebell" },
@@ -113,7 +110,6 @@
     }
 
     const list = (exercises || []).filter(Boolean);
-
     workoutDiv.innerHTML = `<h3>${String(day).toUpperCase()} DAY</h3>`;
     logDiv.innerHTML = "";
 
@@ -169,7 +165,6 @@
     } else {
       const sets = parseSetList($(`r_${exId}`)?.value);
       if (!sets.length) return alert("Enter reps like 12,12,10.");
-
       entry.sets = sets;
 
       if (ex.imp !== "bodyweight") {
@@ -186,12 +181,107 @@
     alert("Logged ✅");
   }
 
+  // ---------- EMOM TIMER (minute reset + 10s warning) ----------
+  let emomInterval = null;
+  let totalMinutes = 30;
+  let minuteIndex = 0;
+  let secondsLeft = 60;
+  let warned = false;
+
+  const EMOM_SEQUENCE = ["Goblet Squats", "Rows", "Kettlebell Swings", "Pushups"];
+
+  function setEmomExerciseLabel() {
+    const ex = EMOM_SEQUENCE[minuteIndex % EMOM_SEQUENCE.length];
+    const el = $("timerExercise");
+    if (el) el.textContent = ex;
+  }
+
+  function setEmomTimerText() {
+    const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+    const ss = String(secondsLeft % 60).padStart(2, "0");
+    const el = $("timerDisplay");
+    if (el) el.textContent = `${mm}:${ss}`;
+  }
+
+  function beep(freq = 900, ms = 150) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.value = 0.12;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => osc.stop(), ms);
+  }
+
+  function startEmom() {
+    if (emomInterval) return;
+
+    const mins = Number($("timerMinutes")?.value) || 0;
+    if (mins <= 0) return alert("Enter total minutes (e.g. 30).");
+    totalMinutes = mins;
+
+    const ts = $("timerStatus");
+    if (ts) ts.textContent = "Running…";
+
+    emomInterval = setInterval(() => {
+      secondsLeft--;
+
+      if (secondsLeft === 10 && !warned) {
+        warned = true;
+        beep(600, 120);
+      }
+
+      if (secondsLeft <= 0) {
+        beep(950, 180);
+        minuteIndex++;
+
+        if (minuteIndex >= totalMinutes) {
+          clearInterval(emomInterval);
+          emomInterval = null;
+          if (ts) ts.textContent = "Done ✅";
+          setTimeout(() => beep(950, 180), 50);
+          setTimeout(() => beep(950, 180), 250);
+          return;
+        }
+
+        secondsLeft = 60;
+        warned = false;
+        setEmomExerciseLabel();
+      }
+
+      setEmomTimerText();
+      if (ts) ts.textContent = `Running… minute ${Math.min(minuteIndex + 1, totalMinutes)}/${totalMinutes}`;
+    }, 1000);
+  }
+
+  function pauseEmom() {
+    clearInterval(emomInterval);
+    emomInterval = null;
+    const ts = $("timerStatus");
+    if (ts) ts.textContent = "Paused";
+  }
+
+  function resetEmom() {
+    pauseEmom();
+    minuteIndex = 0;
+    secondsLeft = 60;
+    warned = false;
+    setEmomExerciseLabel();
+    setEmomTimerText();
+    const ts = $("timerStatus");
+    if (ts) ts.textContent = "";
+  }
+
+  // ---------- MAIN INIT ----------
   function init() {
+    // Workout generator
     const genBtn = $("genBtn");
     const dayType = $("dayType");
-
     if (!genBtn || !dayType) {
-      alert("Missing #genBtn or #dayType in index.html");
+      setStatus("missing genBtn/dayType");
       return;
     }
 
@@ -199,135 +289,22 @@
       const choice = dayType.value || "auto";
       const day = (choice === "auto") ? nextDay() : choice;
       renderWorkout(day, pickWorkoutForDay(day));
-      setStatus("ready ✅ (Generate wired)");
     });
 
-    const resetBtn = $("resetCycleBtn");
-    if (resetBtn) {
-      resetBtn.addEventListener("click", () => {
-        localStorage.removeItem(LAST_DAY_KEY);
-        alert("Rotation reset ✅");
-      });
-    }
+    $("resetCycleBtn")?.addEventListener("click", () => {
+      localStorage.removeItem(LAST_DAY_KEY);
+      alert("Rotation reset ✅");
+    });
 
-    setStatus("ready ✅ (script running)");
+    // EMOM timer wiring
+    setEmomExerciseLabel();
+    setEmomTimerText();
+    $("startTimer")?.addEventListener("click", startEmom);
+    $("pauseTimer")?.addEventListener("click", pauseEmom);
+    $("resetTimer")?.addEventListener("click", resetEmom);
+
+    setStatus("ready ✅");
   }
 
   document.addEventListener("DOMContentLoaded", init);
-
-
-// -------- EMOM TIMER (minute reset + 10s warning) --------
-
-let emomInterval = null;
-
-let totalMinutes = 30;      // from input
-let minuteIndex = 0;        // which minute we’re on (0..totalMinutes-1)
-let secondsLeft = 60;       // current minute countdown
-let warned = false;
-
-const EMOM_SEQUENCE = [
-  "Goblet Squats",
-  "Rows",
-  "Kettlebell Swings",
-  "Pushups"
-];
-
-function setExerciseLabel() {
-  const ex = EMOM_SEQUENCE[minuteIndex % EMOM_SEQUENCE.length];
-  const el = $("timerExercise");
-  if (el) el.textContent = ex;
-}
-
-function setTimerText() {
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-  const ss = String(secondsLeft % 60).padStart(2, "0");
-  const el = $("timerDisplay");
-  if (el) el.textContent = `${mm}:${ss}`;
-}
-
-function beep(freq = 900, ms = 150) {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.value = freq;
-  gain.gain.value = 0.12;
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  setTimeout(() => osc.stop(), ms);
-}
-
-function startEmom() {
-$("timerStatus") && ($("timerStatus").textContent = "Started ✅");
-  if (emomInterval) return;
-const ts = document.getElementById("timerStatus");
-if (ts) ts.textContent = "Start clicked ✅";
-  const mins = Number($("timerMinutes")?.value) || 0;
-  if (mins <= 0) return alert("Enter total minutes (e.g. 30).");
-
-  totalMinutes = mins;
-  // If starting fresh
-  if (minuteIndex === 0 && secondsLeft === 60) {
-    setExerciseLabel();
-    setTimerText();
-  }
-
-  emomInterval = setInterval(() => {
-    secondsLeft--;
-    $("timerStatus") && ($("timerStatus").textContent = `Running… minute ${minuteIndex + 1}/${totalMinutes}`);
-
-    // 10-second warning (once per minute)
-    if (secondsLeft === 10 && !warned) {
-      warned = true;
-      beep(600, 120); // lower pitch warning
-    }
-
-    // If minute ended
-    if (secondsLeft <= 0) {
-      beep(950, 180); // main beep
-      minuteIndex++;
-
-      // Done?
-      if (minuteIndex >= totalMinutes) {
-        clearInterval(emomInterval);
-        emomInterval = null;
-        // final "done" beep-beep
-        setTimeout(() => beep(950, 180), 50);
-        setTimeout(() => beep(950, 180), 250);
-        return;
-      }
-
-      // Reset for next minute
-      secondsLeft = 60;
-      warned = false;
-      setExerciseLabel();
-    }
-
-    setTimerText();
-  }, 1000);
-}
-
-function pauseEmom() {
-  clearInterval(emomInterval);
-  emomInterval = null;
-}
-
-function resetEmom() {
-  pauseEmom();
-  minuteIndex = 0;
-  secondsLeft = 60;
-  warned = false;
-  setExerciseLabel();
-  setTimerText();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  // initialize display
-  setExerciseLabel();
-  setTimerText();
-
-  $("startTimer")?.addEventListener("click", startEmom);
-  $("pauseTimer")?.addEventListener("click", pauseEmom);
-  $("resetTimer")?.addEventListener("click", resetEmom);
-});
+})();
