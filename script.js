@@ -261,7 +261,8 @@ function beep(freq = 900, ms = 150) {
 function startEmom() {
 $("timerStatus") && ($("timerStatus").textContent = "Started ✅");
   if (emomInterval) return;
-
+const ts = document.getElementById("timerStatus");
+if (ts) ts.textContent = "Start clicked ✅";
   const mins = Number($("timerMinutes")?.value) || 0;
   if (mins <= 0) return alert("Enter total minutes (e.g. 30).");
 
