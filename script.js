@@ -454,12 +454,13 @@ document.getElementById("genBtn").addEventListener("click", () => {
   const dayTypeEl = document.getElementById("dayType");
   const choice = dayTypeEl ? dayTypeEl.value : "auto";
 
-  // Auto = use rotation
   let day;
   if (choice === "auto") {
-    day = nextDay();
+    day = nextDay();          // uses rotation
   } else {
-    day = choice; // manual selection
+    day = choice;             // uses dropdown selection
+    // optional: if you WANT rotation to follow what you picked, uncomment:
+    // setLastDay(day);
   }
 
   currentExercises = pickWorkoutForDay(day);
