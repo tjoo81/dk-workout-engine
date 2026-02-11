@@ -1,4 +1,7 @@
-(() => {
+(() => { setTimeout(() => {
+  const s = document.getElementById("status");
+  if (s) s.textContent = "Status: script loaded ✅";
+}, 0);
   const $ = (id) => document.getElementById(id);
 
   const STORE_KEY = "dk_workout_history_v99";
