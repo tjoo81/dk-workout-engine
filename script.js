@@ -265,14 +265,21 @@ function pickWorkoutForDay(day) {
     ].filter(Boolean);
   }
 
-  if (day === "cond") {
-    // Swings + clean&press + 1-hand swings
-    return [
-      pool.find(e => e.id === "kb_swing_2h"),
-      pool.find(e => e.id === "kb_clean_press"),
-      pool.find(e => e.id === "kb_swing_1h")
-    ].filter(Boolean);
-  }
+if (day === "cond") {
+  const swingOptions = [
+    pool.find(e => e.id === "kb_swing_2h"),
+    pool.find(e => e.id === "kb_swing_1h")
+  ].filter(Boolean);
+
+  const randomSwing = swingOptions[Math.floor(Math.random() * swingOptions.length)];
+
+  return [
+    randomSwing,
+    pool.find(e => e.id === "kb_clean_press"),
+    pool.find(e => e.id === "pushups"),
+    pool.find(e => e.id === "crunches")
+  ].filter(Boolean);
+}
 
   if (day === "cardio") {
     return [pool.find(e => e.id === "zone2")].filter(Boolean);
