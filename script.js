@@ -90,10 +90,16 @@
     // PUSH
     { id: "bb_bench", name: "Barbell Bench Press", day: "push", range: [5, 8], imp: "barbell" },
     { id: "db_press", name: "DB Shoulder Press", day: "push", range: [8, 12], imp: "dumbbell" },
+    { id: "db_fly", name: "DB Chest Fly", day: "push", range: [10, 15], imp: "dumbbell" },
+{ id: "tri_ext", name: "Overhead Triceps Extension", day: "push", range: [10, 15], imp: "dumbbell" },
+{ id: "pushups_push", name: "Pushups", day: "push", range: [15, 30], imp: "bodyweight" },
 
     // PULL
     { id: "bb_row", name: "Barbell Row", day: "pull", range: [6, 10], imp: "barbell" },
     { id: "db_curl", name: "DB Curl", day: "pull", range: [6, 10], imp: "dumbbell" },
+    { id: "hammer_curl", name: "Hammer Curl", day: "pull", range: [8, 12], imp: "dumbbell" },
+{ id: "rear_delt", name: "Rear Delt Fly", day: "pull", range: [12, 20], imp: "dumbbell" },
+    
 
     // LEGS
     { id: "kb_goblet", name: "KB Goblet Squat", day: "legs", range: [10, 15], imp: "kettlebell" },
