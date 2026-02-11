@@ -213,12 +213,14 @@
   document.addEventListener("DOMContentLoaded", init);
 
 
-// -------- EMOM TIMER (Workout Rotation Mode) --------
+// -------- EMOM TIMER (minute reset + 10s warning) --------
 
-let timerInterval = null;
-let remainingSeconds = 0;
-let totalSeconds = 0;
-let currentMinute = 0;
+let emomInterval = null;
+
+let totalMinutes = 30;      // from input
+let minuteIndex = 0;        // which minute we’re on (0..totalMinutes-1)
+let secondsLeft = 60;       // current minute countdown
+let warned = false;
 
 const EMOM_SEQUENCE = [
   "Goblet Squats",
@@ -227,76 +229,99 @@ const EMOM_SEQUENCE = [
   "Pushups"
 ];
 
-function updateTimerDisplay() {
-  const min = Math.floor(remainingSeconds / 60);
-  const sec = remainingSeconds % 60;
-  const formatted = `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  const display = $("timerDisplay");
-  if (display) display.textContent = formatted;
+function setExerciseLabel() {
+  const ex = EMOM_SEQUENCE[minuteIndex % EMOM_SEQUENCE.length];
+  const el = $("timerExercise");
+  if (el) el.textContent = ex;
 }
 
-function updateExerciseDisplay() {
-  const exercise = EMOM_SEQUENCE[currentMinute % EMOM_SEQUENCE.length];
-  const display = $("timerExercise");
-  if (display) display.textContent = exercise;
+function setTimerText() {
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
+  const el = $("timerDisplay");
+  if (el) el.textContent = `${mm}:${ss}`;
 }
 
-function beep() {
+function beep(freq = 900, ms = 150) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = ctx.createOscillator();
-  oscillator.type = "sine";
-  oscillator.frequency.value = 900;
-  oscillator.connect(ctx.destination);
-  oscillator.start();
-  setTimeout(() => oscillator.stop(), 150);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  gain.gain.value = 0.12;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  setTimeout(() => osc.stop(), ms);
 }
 
-function startTimer() {
-  if (timerInterval) return;
+function startEmom() {
+  if (emomInterval) return;
 
-  if (remainingSeconds <= 0) {
-    const mins = Number($("timerMinutes")?.value) || 0;
-    totalSeconds = mins * 60;
-    remainingSeconds = totalSeconds;
-    currentMinute = 0;
-    updateExerciseDisplay();
+  const mins = Number($("timerMinutes")?.value) || 0;
+  if (mins <= 0) return alert("Enter total minutes (e.g. 30).");
+
+  totalMinutes = mins;
+  // If starting fresh
+  if (minuteIndex === 0 && secondsLeft === 60) {
+    setExerciseLabel();
+    setTimerText();
   }
 
-  timerInterval = setInterval(() => {
-    remainingSeconds--;
+  emomInterval = setInterval(() => {
+    secondsLeft--;
 
-    if (remainingSeconds % 60 === 59) {
-      currentMinute++;
-      updateExerciseDisplay();
-      beep();
+    // 10-second warning (once per minute)
+    if (secondsLeft === 10 && !warned) {
+      warned = true;
+      beep(600, 120); // lower pitch warning
     }
 
-    if (remainingSeconds <= 0) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      beep();
+    // If minute ended
+    if (secondsLeft <= 0) {
+      beep(950, 180); // main beep
+      minuteIndex++;
+
+      // Done?
+      if (minuteIndex >= totalMinutes) {
+        clearInterval(emomInterval);
+        emomInterval = null;
+        // final "done" beep-beep
+        setTimeout(() => beep(950, 180), 50);
+        setTimeout(() => beep(950, 180), 250);
+        return;
+      }
+
+      // Reset for next minute
+      secondsLeft = 60;
+      warned = false;
+      setExerciseLabel();
     }
 
-    updateTimerDisplay();
+    setTimerText();
   }, 1000);
 }
 
-function pauseTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
+function pauseEmom() {
+  clearInterval(emomInterval);
+  emomInterval = null;
 }
 
-function resetTimer() {
-  pauseTimer();
-  remainingSeconds = 0;
-  currentMinute = 0;
-  updateTimerDisplay();
-  const display = $("timerExercise");
-  if (display) display.textContent = "-";
+function resetEmom() {
+  pauseEmom();
+  minuteIndex = 0;
+  secondsLeft = 60;
+  warned = false;
+  setExerciseLabel();
+  setTimerText();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  $("startTimer")?.addEventListener("click", startTimer);
-  $("pauseTimer")?.addEventListener("click", pauseTimer);
-  $("resetTimer")?.addEventListener("click", resetTimer);
+  // initialize display
+  setExerciseLabel();
+  setTimerText();
+
+  $("startTimer")?.addEventListener("click", startEmom);
+  $("pauseTimer")?.addEventListener("click", pauseEmom);
+  $("resetTimer")?.addEventListener("click", resetEmom);
 });
