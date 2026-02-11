@@ -65,19 +65,24 @@
   <div class="wrap">
     <h1>Garage Gym Planner</h1>
 
-    <div class="card">
-      <h2>Today’s Workout</h2>
+<div class="card">
+  <h2>Today’s Workout</h2>
 
-      <button id="genBtn">Generate Workout</button>
-      <button id="resetCycleBtn" class="ghost">Reset Rotation</button>
+  <label for="dayType" class="small">Workout type</label>
+  <select id="dayType">
+    <option value="auto" selected>Auto (recommended)</option>
+    <option value="push">Push</option>
+    <option value="pull">Pull</option>
+    <option value="legs">Legs</option>
+    <option value="cond">Conditioning</option>
+    <option value="cardio">Cardio</option>
+  </select>
 
-      <div id="workout"></div>
-    </div>
+  <button id="genBtn">Generate Workout</button>
+  <button id="resetCycleBtn" class="ghost">Reset Rotation</button>
 
-    <div class="card">
-      <h2>Log Results</h2>
-      <div id="logArea"></div>
-    </div>
+  <div id="workout"></div>
+</div>
 
     <div class="card">
       <h2>Equipment</h2>
