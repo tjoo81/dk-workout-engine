@@ -256,6 +256,7 @@ function beep(freq = 900, ms = 150) {
 }
 
 function startEmom() {
+$("timerStatus") && ($("timerStatus").textContent = "Started ✅");
   if (emomInterval) return;
 
   const mins = Number($("timerMinutes")?.value) || 0;
@@ -270,6 +271,7 @@ function startEmom() {
 
   emomInterval = setInterval(() => {
     secondsLeft--;
+    $("timerStatus") && ($("timerStatus").textContent = `Running… minute ${minuteIndex + 1}/${totalMinutes}`);
 
     // 10-second warning (once per minute)
     if (secondsLeft === 10 && !warned) {
