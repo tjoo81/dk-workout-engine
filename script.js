@@ -1,10 +1,9 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
-  const STORE_KEY = "dk_workout_history_v500";
-  const LAST_DAY_KEY = "dk_last_day_v500";
-  const DAY_CYCLE = ["push", "pull", "legs", "cond", "cardio"];
-
+  // -----------------------------
+  // STATUS + ERROR DISPLAY
+  // -----------------------------
   function setStatus(msg) {
     const s = $("status");
     if (s) s.textContent = "Status: " + msg;
@@ -15,16 +14,36 @@
     setStatus("PROMISE ERROR: " + (e?.reason?.message || e?.reason || "unknown"))
   );
 
+  // -----------------------------
+  // STORAGE + HELPERS
+  // -----------------------------
+  const STORE_KEY = "dk_workout_history_v777";
+  const LAST_DAY_KEY = "dk_last_day_v777";
+  const DAY_CYCLE = ["push", "pull", "legs", "cond", "cardio"];
+
   function stamp() {
     return new Date().toLocaleString();
   }
 
-  function loadHistory() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); }
-    catch { return {}; }
+  function safeParse(raw, fallback) {
+    try { return JSON.parse(raw); } catch { return fallback; }
   }
+
+  function loadHistory() {
+    return safeParse(localStorage.getItem(STORE_KEY) || "{}", {});
+  }
+
   function saveHistory(h) {
     localStorage.setItem(STORE_KEY, JSON.stringify(h));
+  }
+
+  function parseSetList(text) {
+    return String(text || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(Number)
+      .filter(n => Number.isFinite(n) && n > 0);
   }
 
   function getLastDay() {
@@ -41,16 +60,9 @@
     return next;
   }
 
-  function parseSetList(text) {
-    return String(text || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter(n => Number.isFinite(n) && n > 0);
-  }
-
-  // ---------- EXERCISES ----------
+  // -----------------------------
+  // EXERCISES (edit freely)
+  // -----------------------------
   const EXERCISES = [
     // PUSH
     { id: "bb_bench", name: "Barbell Bench Press", day: "push", range: [5, 8], imp: "barbell" },
@@ -71,7 +83,7 @@
     { id: "kb_sumo", name: "KB Sumo Squat", day: "legs", range: [10, 15], imp: "kettlebell" },
     { id: "bb_rdl", name: "Barbell RDL", day: "legs", range: [8, 12], imp: "barbell" },
 
-    // CONDITIONING (workout generator)
+    // CONDITIONING (generator)
     { id: "kb_swing_2h", name: "KB Swing (2-Hand)", day: "cond", range: [12, 20], imp: "kettlebell" },
     { id: "kb_swing_1h", name: "KB Swing (1-Hand, per side)", day: "cond", range: [8, 15], imp: "kettlebell" },
     { id: "kb_clean_press", name: "KB Clean & Press (per side)", day: "cond", range: [5, 10], imp: "kettlebell" },
@@ -83,7 +95,7 @@
   ];
 
   function pickWorkoutForDay(day) {
-    const pool = EXERCISES.filter(e => e.day === day);
+    const pool = EXERCISES.filter(e => e.day === day).filter(Boolean);
 
     if (day === "cond") {
       const twoH = pool.find(e => e.id === "kb_swing_2h");
@@ -98,7 +110,7 @@
       ].filter(Boolean);
     }
 
-    return pool;
+    return pool; // push/pull/legs/cardio = show all tagged
   }
 
   function renderWorkout(day, exercises) {
@@ -153,9 +165,10 @@
 
   function logExercise(exId) {
     const ex = EXERCISES.find(e => e.id === exId);
+    if (!ex) return alert("Unknown exercise: " + exId);
+
     const history = loadHistory();
     history[exId] = history[exId] || { logs: [], last: null };
-
     const entry = { time: stamp() };
 
     if (ex.imp === "cardio") {
@@ -181,26 +194,26 @@
     alert("Logged ✅");
   }
 
-  // ---------- EMOM TIMER (minute reset + 10s warning) ----------
+  // -----------------------------
+  // EMOM TIMER (minute reset + 10s warning + rotate)
+  // -----------------------------
   let emomInterval = null;
   let totalMinutes = 30;
-  let minuteIndex = 0;
-  let secondsLeft = 60;
+  let minuteIndex = 0;   // 0..totalMinutes-1
+  let secondsLeft = 60;  // countdown for the current minute
   let warned = false;
 
   const EMOM_SEQUENCE = ["Goblet Squats", "Rows", "Kettlebell Swings", "Pushups"];
 
   function setEmomExerciseLabel() {
     const ex = EMOM_SEQUENCE[minuteIndex % EMOM_SEQUENCE.length];
-    const el = $("timerExercise");
-    if (el) el.textContent = ex;
+    $("timerExercise") && ($("timerExercise").textContent = ex);
   }
 
   function setEmomTimerText() {
     const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
     const ss = String(secondsLeft % 60).padStart(2, "0");
-    const el = $("timerDisplay");
-    if (el) el.textContent = `${mm}:${ss}`;
+    $("timerDisplay") && ($("timerDisplay").textContent = `${mm}:${ss}`);
   }
 
   function beep(freq = 900, ms = 150) {
@@ -223,45 +236,48 @@
     if (mins <= 0) return alert("Enter total minutes (e.g. 30).");
     totalMinutes = mins;
 
-    const ts = $("timerStatus");
-    if (ts) ts.textContent = "Running…";
+    $("timerStatus") && ($("timerStatus").textContent = "Running…");
 
     emomInterval = setInterval(() => {
       secondsLeft--;
 
+      // 10-second warning
       if (secondsLeft === 10 && !warned) {
         warned = true;
         beep(600, 120);
       }
 
+      // minute ended
       if (secondsLeft <= 0) {
         beep(950, 180);
         minuteIndex++;
 
+        // finished?
         if (minuteIndex >= totalMinutes) {
           clearInterval(emomInterval);
           emomInterval = null;
-          if (ts) ts.textContent = "Done ✅";
+          $("timerStatus") && ($("timerStatus").textContent = "Done ✅");
+          // extra finish beeps
           setTimeout(() => beep(950, 180), 50);
           setTimeout(() => beep(950, 180), 250);
           return;
         }
 
+        // reset next minute
         secondsLeft = 60;
         warned = false;
         setEmomExerciseLabel();
       }
 
       setEmomTimerText();
-      if (ts) ts.textContent = `Running… minute ${Math.min(minuteIndex + 1, totalMinutes)}/${totalMinutes}`;
+      $("timerStatus") && ($("timerStatus").textContent = `Running… minute ${Math.min(minuteIndex + 1, totalMinutes)}/${totalMinutes}`);
     }, 1000);
   }
 
   function pauseEmom() {
     clearInterval(emomInterval);
     emomInterval = null;
-    const ts = $("timerStatus");
-    if (ts) ts.textContent = "Paused";
+    $("timerStatus") && ($("timerStatus").textContent = "Paused");
   }
 
   function resetEmom() {
@@ -271,22 +287,16 @@
     warned = false;
     setEmomExerciseLabel();
     setEmomTimerText();
-    const ts = $("timerStatus");
-    if (ts) ts.textContent = "";
+    $("timerStatus") && ($("timerStatus").textContent = "");
   }
 
-  // ---------- MAIN INIT ----------
+  // -----------------------------
+  // INIT (single place wires everything)
+  // -----------------------------
   function init() {
-    // Workout generator
-    const genBtn = $("genBtn");
-    const dayType = $("dayType");
-    if (!genBtn || !dayType) {
-      setStatus("missing genBtn/dayType");
-      return;
-    }
-
-    genBtn.addEventListener("click", () => {
-      const choice = dayType.value || "auto";
+    // Workout generator wiring
+    $("genBtn")?.addEventListener("click", () => {
+      const choice = $("dayType")?.value || "auto";
       const day = (choice === "auto") ? nextDay() : choice;
       renderWorkout(day, pickWorkoutForDay(day));
     });
@@ -296,7 +306,7 @@
       alert("Rotation reset ✅");
     });
 
-    // EMOM timer wiring
+    // EMOM wiring
     setEmomExerciseLabel();
     setEmomTimerText();
     $("startTimer")?.addEventListener("click", startEmom);
