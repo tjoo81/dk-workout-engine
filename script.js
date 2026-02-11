@@ -211,25 +211,41 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
-  // -------- EMOM TIMER --------
+
+
+// -------- EMOM TIMER (Workout Rotation Mode) --------
 
 let timerInterval = null;
 let remainingSeconds = 0;
 let totalSeconds = 0;
+let currentMinute = 0;
+
+const EMOM_SEQUENCE = [
+  "Goblet Squats",
+  "Rows",
+  "Kettlebell Swings",
+  "Pushups"
+];
 
 function updateTimerDisplay() {
   const min = Math.floor(remainingSeconds / 60);
   const sec = remainingSeconds % 60;
   const formatted = `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  const el = $("timerDisplay");
-  if (el) el.textContent = formatted;
+  const display = $("timerDisplay");
+  if (display) display.textContent = formatted;
+}
+
+function updateExerciseDisplay() {
+  const exercise = EMOM_SEQUENCE[currentMinute % EMOM_SEQUENCE.length];
+  const display = $("timerExercise");
+  if (display) display.textContent = exercise;
 }
 
 function beep() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const oscillator = ctx.createOscillator();
   oscillator.type = "sine";
-  oscillator.frequency.value = 800;
+  oscillator.frequency.value = 900;
   oscillator.connect(ctx.destination);
   oscillator.start();
   setTimeout(() => oscillator.stop(), 150);
@@ -242,13 +258,17 @@ function startTimer() {
     const mins = Number($("timerMinutes")?.value) || 0;
     totalSeconds = mins * 60;
     remainingSeconds = totalSeconds;
+    currentMinute = 0;
+    updateExerciseDisplay();
   }
 
   timerInterval = setInterval(() => {
     remainingSeconds--;
 
-    if (remainingSeconds % 60 === 0) {
-      beep(); // minute beep
+    if (remainingSeconds % 60 === 59) {
+      currentMinute++;
+      updateExerciseDisplay();
+      beep();
     }
 
     if (remainingSeconds <= 0) {
@@ -269,7 +289,10 @@ function pauseTimer() {
 function resetTimer() {
   pauseTimer();
   remainingSeconds = 0;
+  currentMinute = 0;
   updateTimerDisplay();
+  const display = $("timerExercise");
+  if (display) display.textContent = "-";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -277,4 +300,3 @@ document.addEventListener("DOMContentLoaded", () => {
   $("pauseTimer")?.addEventListener("click", pauseTimer);
   $("resetTimer")?.addEventListener("click", resetTimer);
 });
-})();
