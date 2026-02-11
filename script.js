@@ -1,38 +1,32 @@
-// Garage Gym Planner - v20 (known-good reset)
 (() => {
-  const STORE_KEY = "dk_workout_history_v20";
-  const LAST_DAY_KEY = "dk_last_day_v20";
-  const EQUIP_KEY = "dk_equipment_v20";
-
-  const DEFAULT_EQUIPMENT = {
-    dumbbells: [30, 35, 40],
-    kettlebells: [30, 40, 50, 70],
-    barbellIncrement: 5
-  };
-
-  const DAY_CYCLE = ["push", "pull", "legs", "cond", "cardio"];
   const $ = (id) => document.getElementById(id);
 
+  const STORE_KEY = "dk_workout_history_v99";
+  const LAST_DAY_KEY = "dk_last_day_v99";
+
+  const DAY_CYCLE = ["push", "pull", "legs", "cond", "cardio"];
+
+  // ---------- UI status (optional; only works if you add <p id="status">)
   function setStatus(msg) {
-    const el = $("status");
-    if (el) el.textContent = "Status: " + msg;
+    const s = $("status");
+    if (s) s.textContent = "Status: " + msg;
   }
 
   window.addEventListener("error", (e) => setStatus("ERROR: " + (e?.message || "unknown")));
   window.addEventListener("unhandledrejection", (e) => setStatus("PROMISE ERROR: " + (e?.reason?.message || e?.reason || "unknown")));
 
-  function safeParseJSON(raw, fallback) {
-    try { return JSON.parse(raw); } catch { return fallback; }
+  function getLastDay() {
+    return localStorage.getItem(LAST_DAY_KEY) || "";
   }
-
-  function parseNumberList(text) {
-    return String(text || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter(n => Number.isFinite(n) && n > 0)
-      .sort((a, b) => a - b);
+  function setLastDay(day) {
+    localStorage.setItem(LAST_DAY_KEY, day);
+  }
+  function nextDay() {
+    const last = getLastDay();
+    const idx = DAY_CYCLE.indexOf(last);
+    const next = DAY_CYCLE[(idx + 1 + DAY_CYCLE.length) % DAY_CYCLE.length] || DAY_CYCLE[0];
+    setLastDay(next);
+    return next;
   }
 
   function parseSetList(text) {
@@ -49,42 +43,14 @@
   }
 
   function loadHistory() {
-    return safeParseJSON(localStorage.getItem(STORE_KEY) || "{}", {});
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); }
+    catch { return {}; }
   }
   function saveHistory(h) {
     localStorage.setItem(STORE_KEY, JSON.stringify(h));
   }
 
-  function loadEquipment() {
-    const eq = safeParseJSON(localStorage.getItem(EQUIP_KEY) || "null", null);
-    if (!eq) return { ...DEFAULT_EQUIPMENT };
-    return {
-      dumbbells: Array.isArray(eq.dumbbells) && eq.dumbbells.length ? eq.dumbbells : DEFAULT_EQUIPMENT.dumbbells,
-      kettlebells: Array.isArray(eq.kettlebells) && eq.kettlebells.length ? eq.kettlebells : DEFAULT_EQUIPMENT.kettlebells,
-      barbellIncrement: Number(eq.barbellIncrement) || DEFAULT_EQUIPMENT.barbellIncrement
-    };
-  }
-  function saveEquipment(eq) {
-    localStorage.setItem(EQUIP_KEY, JSON.stringify(eq));
-  }
-
-  let EQUIPMENT = loadEquipment();
-
-  function getLastDay() {
-    return localStorage.getItem(LAST_DAY_KEY) || "";
-  }
-  function setLastDay(day) {
-    localStorage.setItem(LAST_DAY_KEY, day);
-  }
-  function nextDay() {
-    const last = getLastDay();
-    const idx = DAY_CYCLE.indexOf(last);
-    const next = DAY_CYCLE[(idx + 1 + DAY_CYCLE.length) % DAY_CYCLE.length] || DAY_CYCLE[0];
-    setLastDay(next);
-    return next;
-  }
-
-  // --- Exercises (edit freely)
+  // ---------- EXERCISES (edit here)
   const EXERCISES = [
     // PUSH
     { id: "bb_bench", name: "Barbell Bench Press", day: "push", range: [5, 8], imp: "barbell" },
@@ -117,7 +83,7 @@
   ];
 
   function pickWorkoutForDay(day) {
-    const pool = EXERCISES.filter(e => e.day === day).filter(Boolean);
+    const pool = EXERCISES.filter(e => e.day === day);
 
     if (day === "cond") {
       const twoH = pool.find(e => e.id === "kb_swing_2h");
@@ -132,21 +98,20 @@
       ].filter(Boolean);
     }
 
-    return pool; // Push/Pull/Legs/Cardio = show all
+    return pool;
   }
 
   function renderWorkout(day, exercises) {
     const workoutDiv = $("workout");
     const logDiv = $("logArea");
-    if (!workoutDiv || !logDiv) return setStatus("Missing #workout or #logArea");
+    if (!workoutDiv || !logDiv) {
+      alert("Missing #workout or #logArea in index.html");
+      return;
+    }
 
     const list = (exercises || []).filter(Boolean);
 
-    workoutDiv.innerHTML = `
-      <h3>${String(day).toUpperCase()} DAY</h3>
-      <p class="small">DBs [${EQUIPMENT.dumbbells.join(", ")}] • KBs [${EQUIPMENT.kettlebells.join(", ")}] • Barbell +${EQUIPMENT.barbellIncrement}</p>
-    `;
-
+    workoutDiv.innerHTML = `<h3>${String(day).toUpperCase()} DAY</h3>`;
     logDiv.innerHTML = "";
 
     if (!list.length) {
@@ -189,10 +154,9 @@
 
   function logExercise(exId) {
     const ex = EXERCISES.find(e => e.id === exId);
-    if (!ex) return alert("Unknown exercise: " + exId);
-
     const history = loadHistory();
     history[exId] = history[exId] || { logs: [], last: null };
+
     const entry = { time: stamp() };
 
     if (ex.imp === "cardio") {
@@ -202,6 +166,7 @@
     } else {
       const sets = parseSetList($(`r_${exId}`)?.value);
       if (!sets.length) return alert("Enter reps like 12,12,10.");
+
       entry.sets = sets;
 
       if (ex.imp !== "bodyweight") {
@@ -218,59 +183,23 @@
     alert("Logged ✅");
   }
 
-  function wireEquipmentUI() {
-    const eqDbs = $("eq_dbs");
-    const eqKbs = $("eq_kbs");
-    const eqBar = $("eq_bar_inc");
-    const eqSave = $("eq_save");
-    const eqReset = $("eq_reset");
-    const eqStatus = $("eq_status");
-    if (!eqDbs || !eqKbs || !eqBar || !eqSave || !eqReset || !eqStatus) return;
-
-    function refresh() {
-      eqDbs.value = EQUIPMENT.dumbbells.join(",");
-      eqKbs.value = EQUIPMENT.kettlebells.join(",");
-      eqBar.value = String(EQUIPMENT.barbellIncrement);
-      eqStatus.textContent = `Saved: DBs [${EQUIPMENT.dumbbells.join(", ")}], KBs [${EQUIPMENT.kettlebells.join(", ")}], Barbell +${EQUIPMENT.barbellIncrement}`;
-    }
-
-    eqSave.addEventListener("click", () => {
-      const newEq = {
-        dumbbells: parseNumberList(eqDbs.value),
-        kettlebells: parseNumberList(eqKbs.value),
-        barbellIncrement: Number(eqBar.value) || 5
-      };
-      if (!newEq.dumbbells.length) newEq.dumbbells = DEFAULT_EQUIPMENT.dumbbells;
-      if (!newEq.kettlebells.length) newEq.kettlebells = DEFAULT_EQUIPMENT.kettlebells;
-
-      EQUIPMENT = newEq;
-      saveEquipment(EQUIPMENT);
-      refresh();
-      alert("Equipment saved ✅");
-    });
-
-    eqReset.addEventListener("click", () => {
-      EQUIPMENT = { ...DEFAULT_EQUIPMENT };
-      saveEquipment(EQUIPMENT);
-      refresh();
-      alert("Equipment reset ✅");
-    });
-
-    refresh();
-  }
-
   function init() {
     const genBtn = $("genBtn");
-    const resetBtn = $("resetCycleBtn");
-    if (!genBtn) return setStatus("Missing #genBtn");
+    const dayType = $("dayType");
+
+    if (!genBtn || !dayType) {
+      alert("Missing #genBtn or #dayType in index.html");
+      return;
+    }
 
     genBtn.addEventListener("click", () => {
-      const choice = $("dayType")?.value || "auto";
+      const choice = dayType.value || "auto";
       const day = (choice === "auto") ? nextDay() : choice;
       renderWorkout(day, pickWorkoutForDay(day));
-      setStatus("ready ✅");
+      setStatus("ready ✅ (Generate wired)");
     });
 
+    const resetBtn = $("resetCycleBtn");
     if (resetBtn) {
       resetBtn.addEventListener("click", () => {
         localStorage.removeItem(LAST_DAY_KEY);
@@ -278,10 +207,8 @@
       });
     }
 
-    wireEquipmentUI();
-    setStatus("ready ✅");
+    setStatus("ready ✅ (script running)");
   }
 
   document.addEventListener("DOMContentLoaded", init);
-  setStatus("script loaded ✅");
 })();
