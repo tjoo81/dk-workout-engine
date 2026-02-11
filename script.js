@@ -1,12 +1,8 @@
-// =======================
-// Garage Gym Planner - v7 stable (no-crash, iPad/GitHub friendly)
-// =======================
-
+// Garage Gym Planner - v11 (array-based, shows full Push/Pull pools, stable logging)
 (() => {
-  // ---------- STORAGE ----------
-  const STORE_KEY = "dk_workout_history_v7";
-  const LAST_DAY_KEY = "dk_last_day_v7";
-  const EQUIP_KEY = "dk_equipment_v7";
+  const STORE_KEY = "dk_workout_history_v11";
+  const LAST_DAY_KEY = "dk_last_day_v11";
+  const EQUIP_KEY = "dk_equipment_v11";
 
   const DEFAULT_EQUIPMENT = {
     dumbbells: [30, 35, 40],
@@ -15,12 +11,34 @@
   };
 
   const DAY_CYCLE = ["push", "pull", "legs", "cond", "cardio"];
-
-  // ---------- HELPERS ----------
   const $ = (id) => document.getElementById(id);
 
+  // -----------------------
+  // Storage helpers
+  // -----------------------
   function safeParseJSON(raw, fallback) {
     try { return JSON.parse(raw); } catch { return fallback; }
+  }
+
+  function loadHistory() {
+    return safeParseJSON(localStorage.getItem(STORE_KEY) || "{}", {});
+  }
+
+  function saveHistory(h) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(h));
+  }
+
+  function stamp() {
+    return new Date().toLocaleString();
+  }
+
+  function parseSetList(text) {
+    return String(text || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(Number)
+      .filter(n => Number.isFinite(n) && n > 0);
   }
 
   function loadEquipment() {
@@ -48,26 +66,11 @@
       .sort((a, b) => a - b);
   }
 
-  function loadHistory() {
-    return safeParseJSON(localStorage.getItem(STORE_KEY) || "{}", {});
-  }
-  function saveHistory(h) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(h));
-  }
+  let EQUIPMENT = loadEquipment();
 
-  function stamp() {
-    return new Date().toLocaleString();
-  }
-
-  function parseSetList(text) {
-    return String(text || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(Number)
-      .filter(n => Number.isFinite(n) && n > 0);
-  }
-
+  // -----------------------
+  // Rotation
+  // -----------------------
   function getLastDay() {
     return localStorage.getItem(LAST_DAY_KEY) || "";
   }
@@ -82,24 +85,22 @@
     return next;
   }
 
-  // ---------- EQUIPMENT ----------
-  let EQUIPMENT = loadEquipment();
-
-  // ---------- EXERCISES ----------
+  // -----------------------
+  // Exercises (YOU CAN EDIT THESE)
+  // -----------------------
   const EXERCISES = [
     // PUSH
     { id: "bb_bench", name: "Barbell Bench Press", day: "push", range: [5, 8], imp: "barbell" },
     { id: "db_press", name: "DB Shoulder Press", day: "push", range: [8, 12], imp: "dumbbell" },
     { id: "db_fly", name: "DB Chest Fly", day: "push", range: [10, 15], imp: "dumbbell" },
-{ id: "tri_ext", name: "Overhead Triceps Extension", day: "push", range: [10, 15], imp: "dumbbell" },
-{ id: "pushups_push", name: "Pushups", day: "push", range: [15, 30], imp: "bodyweight" },
+    { id: "tri_ext", name: "Overhead Triceps Extension", day: "push", range: [10, 15], imp: "dumbbell" },
+    { id: "pushups_push", name: "Pushups", day: "push", range: [15, 30], imp: "bodyweight" },
 
     // PULL
     { id: "bb_row", name: "Barbell Row", day: "pull", range: [6, 10], imp: "barbell" },
     { id: "db_curl", name: "DB Curl", day: "pull", range: [6, 10], imp: "dumbbell" },
     { id: "hammer_curl", name: "Hammer Curl", day: "pull", range: [8, 12], imp: "dumbbell" },
-{ id: "rear_delt", name: "Rear Delt Fly", day: "pull", range: [12, 20], imp: "dumbbell" },
-    
+    { id: "rear_delt", name: "Rear Delt Fly", day: "pull", range: [12, 20], imp: "dumbbell" },
 
     // LEGS
     { id: "kb_goblet", name: "KB Goblet Squat", day: "legs", range: [10, 15], imp: "kettlebell" },
@@ -111,13 +112,16 @@
     { id: "kb_swing_2h", name: "KB Swing (2-Hand)", day: "cond", range: [12, 20], imp: "kettlebell" },
     { id: "kb_swing_1h", name: "KB Swing (1-Hand, per side)", day: "cond", range: [8, 15], imp: "kettlebell" },
     { id: "kb_clean_press", name: "KB Clean & Press (per side)", day: "cond", range: [5, 10], imp: "kettlebell" },
-    { id: "pushups", name: "Pushups", day: "cond", range: [15, 30], imp: "bodyweight" },
+    { id: "pushups_cond", name: "Pushups", day: "cond", range: [15, 30], imp: "bodyweight" },
     { id: "crunches", name: "Crunches", day: "cond", range: [20, 40], imp: "bodyweight" },
 
     // CARDIO
     { id: "zone2", name: "Zone 2 Cardio", day: "cardio", range: [25, 40], imp: "cardio" }
   ];
 
+  // -----------------------
+  // Workout builder
+  // -----------------------
   function pickWorkoutForDay(day) {
     const pool = EXERCISES.filter(e => e.day === day);
 
@@ -129,63 +133,48 @@
       return [
         swing,
         pool.find(e => e.id === "kb_clean_press"),
-        pool.find(e => e.id === "pushups"),
-        pool.find(e => e.id === "crunches"),
+        pool.find(e => e.id === "pushups_cond"),
+        pool.find(e => e.id === "crunches")
       ].filter(Boolean);
     }
 
-    if (day === "push") {
-      return [
-        pool.find(e => e.id === "bb_bench"),
-        pool.find(e => e.id === "db_press"),
-      ].filter(Boolean);
-    }
-
-    if (day === "pull") {
-      return [
-        pool.find(e => e.id === "bb_row"),
-        pool.find(e => e.id === "db_curl"),
-      ].filter(Boolean);
-    }
-
-    if (day === "legs") {
-      return [
-        pool.find(e => e.id === "kb_goblet"),
-        pool.find(e => e.id === "db_lunge"),
-        pool.find(e => e.id === "kb_sumo"),
-        pool.find(e => e.id === "bb_rdl"),
-      ].filter(Boolean);
-    }
-
-    if (day === "cardio") {
-      return [pool.find(e => e.id === "zone2")].filter(Boolean);
-    }
-
-    return [];
+    // For all other days: show ALL exercises for that day
+    return pool.filter(Boolean);
   }
 
-  // ---------- RENDER + LOGGING ----------
+  // -----------------------
+  // Render + logging
+  // -----------------------
   function renderWorkout(day, exercises) {
     const workoutDiv = $("workout");
     const logDiv = $("logArea");
-    if (!workoutDiv || !logDiv) {
-      alert("Missing #workout or #logArea in index.html");
+    if (!workoutDiv) return alert("Missing <div id='workout'></div> in index.html");
+    if (!logDiv) return alert("Missing <div id='logArea'></div> in index.html");
+
+    const list = (exercises || []).filter(Boolean);
+
+    workoutDiv.innerHTML = `
+      <h3>${String(day).toUpperCase()} DAY</h3>
+      <p class="small">
+        DBs [${EQUIPMENT.dumbbells.join(", ")}] • KBs [${EQUIPMENT.kettlebells.join(", ")}] • Barbell +${EQUIPMENT.barbellIncrement}
+      </p>
+    `;
+
+    logDiv.innerHTML = "";
+
+    if (list.length === 0) {
+      workoutDiv.innerHTML += `<p>No exercises found for "${day}".</p>`;
       return;
     }
 
-    const exList = (exercises || []).filter(Boolean);
-    workoutDiv.innerHTML = `<h3>${day.toUpperCase()} DAY</h3>`;
-    logDiv.innerHTML = "";
-
-    exList.forEach(ex => {
+    list.forEach(ex => {
       workoutDiv.innerHTML += `
-        <p>
+        <div style="border-top:1px dashed #333; padding-top:10px; margin-top:10px;">
           <strong>${ex.name}</strong><br/>
           Target: ${ex.range[0]}–${ex.range[1]} ${ex.imp === "cardio" ? "min" : "reps"}
-        </p>
+        </div>
       `;
 
-      // Build log inputs
       const weightField =
         (ex.imp !== "cardio" && ex.imp !== "bodyweight")
           ? `<input id="w_${ex.id}" type="number" inputmode="numeric" placeholder="Weight (lbs)" />`
@@ -197,8 +186,8 @@
           : `<input id="r_${ex.id}" placeholder="Reps per set (e.g. 12,12,10)" />`;
 
       logDiv.innerHTML += `
-        <div style="padding:10px 0; border-top:1px dashed #333;">
-          <h4 style="margin:0 0 8px 0;">Log: ${ex.name}</h4>
+        <div style="border-top:1px dashed #333; padding-top:10px; margin-top:10px;">
+          <strong>Log: ${ex.name}</strong><br/>
           ${weightField}
           ${repsOrMins}
           <button class="logBtn" data-ex="${ex.id}" style="margin-top:8px;">Log</button>
@@ -206,7 +195,6 @@
       `;
     });
 
-    // Wire log buttons (no inline onclick needed)
     document.querySelectorAll(".logBtn").forEach(btn => {
       btn.addEventListener("click", () => logExercise(btn.dataset.ex));
     });
@@ -214,7 +202,7 @@
 
   function logExercise(exId) {
     const ex = EXERCISES.find(e => e.id === exId);
-    if (!ex) return;
+    if (!ex) return alert("Unknown exercise: " + exId);
 
     const history = loadHistory();
     history[exId] = history[exId] || { logs: [], last: null };
@@ -227,8 +215,7 @@
       entry.minutes = mins;
     } else {
       const sets = parseSetList($(`r_${exId}`)?.value);
-      if (!sets.length) return alert("Enter reps like 12,12,10");
-
+      if (!sets.length) return alert("Enter reps like 12,12,10.");
       entry.sets = sets;
 
       if (ex.imp !== "bodyweight") {
@@ -245,7 +232,9 @@
     alert("Logged ✅");
   }
 
-  // ---------- EQUIPMENT UI (optional) ----------
+  // -----------------------
+  // Equipment UI (optional)
+  // -----------------------
   function wireEquipmentUI() {
     const eqDbs = $("eq_dbs");
     const eqKbs = $("eq_kbs");
@@ -253,14 +242,13 @@
     const eqSave = $("eq_save");
     const eqReset = $("eq_reset");
     const eqStatus = $("eq_status");
-
     if (!eqDbs || !eqKbs || !eqBar || !eqSave || !eqReset || !eqStatus) return;
 
     function refresh() {
-      eqDbs.value = (EQUIPMENT.dumbbells || []).join(",");
-      eqKbs.value = (EQUIPMENT.kettlebells || []).join(",");
-      eqBar.value = String(EQUIPMENT.barbellIncrement || 5);
-      eqStatus.textContent = `Saved: DBs [${EQUIPMENT.dumbbells.join(", ")}], KBs [${EQUIPMENT.kettlebells.join(", ")}], +${EQUIPMENT.barbellIncrement}`;
+      eqDbs.value = EQUIPMENT.dumbbells.join(",");
+      eqKbs.value = EQUIPMENT.kettlebells.join(",");
+      eqBar.value = String(EQUIPMENT.barbellIncrement);
+      eqStatus.textContent = `Saved: DBs [${EQUIPMENT.dumbbells.join(", ")}], KBs [${EQUIPMENT.kettlebells.join(", ")}], Barbell +${EQUIPMENT.barbellIncrement}`;
     }
 
     eqSave.addEventListener("click", () => {
@@ -269,7 +257,6 @@
         kettlebells: parseNumberList(eqKbs.value),
         barbellIncrement: Number(eqBar.value) || 5
       };
-
       if (!newEq.dumbbells.length) newEq.dumbbells = DEFAULT_EQUIPMENT.dumbbells;
       if (!newEq.kettlebells.length) newEq.kettlebells = DEFAULT_EQUIPMENT.kettlebells;
 
@@ -289,25 +276,23 @@
     refresh();
   }
 
-  // ---------- INIT ----------
+  // -----------------------
+  // Init
+  // -----------------------
   function init() {
     const genBtn = $("genBtn");
-    const resetCycleBtn = $("resetCycleBtn");
+    const resetBtn = $("resetCycleBtn");
 
-    if (!genBtn) {
-      alert("Missing #genBtn in index.html");
-      return;
-    }
+    if (!genBtn) return alert("Missing #genBtn in index.html");
 
     genBtn.addEventListener("click", () => {
       const choice = $("dayType")?.value || "auto";
       const day = (choice === "auto") ? nextDay() : choice;
-      const workout = pickWorkoutForDay(day);
-      renderWorkout(day, workout);
+      renderWorkout(day, pickWorkoutForDay(day));
     });
 
-    if (resetCycleBtn) {
-      resetCycleBtn.addEventListener("click", () => {
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
         localStorage.removeItem(LAST_DAY_KEY);
         alert("Rotation reset ✅");
       });
