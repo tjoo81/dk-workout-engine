@@ -1,9 +1,9 @@
 // =======================
 // STORAGE KEYS
 // =======================
-const STORE_KEY = "dk_workout_history_v5";
-const LAST_DAY_KEY = "dk_last_day_v5";
-const EQUIP_KEY = "dk_equipment_v5";
+const STORE_KEY = "dk_workout_history_v6";
+const LAST_DAY_KEY = "dk_last_day_v6";
+const EQUIP_KEY = "dk_equipment_v6";
 
 // =======================
 // DEFAULT EQUIPMENT
@@ -105,7 +105,6 @@ function saveHistory(h) {
 function stamp() {
   return new Date().toLocaleString();
 }
-
 function parseSetList(text) {
   return text
     .split(",")
@@ -116,127 +115,36 @@ function parseSetList(text) {
 }
 
 // =======================
-// WEIGHT PROGRESSION
-// =======================
-function nextAvailableWeight(current, list) {
-  const sorted = list.slice().sort((a, b) => a - b);
-  for (const w of sorted) {
-    if (w > current) return w;
-  }
-  return null;
-}
-
-function suggestedNextWeight(ex, currentWeight) {
-  if (ex.imp === "barbell") return currentWeight + EQUIPMENT.barbellIncrement;
-  if (ex.imp === "dumbbell") return nextAvailableWeight(currentWeight, EQUIPMENT.dumbbells);
-  if (ex.imp === "kettlebell") return nextAvailableWeight(currentWeight, EQUIPMENT.kettlebells);
-  return null;
-}
-
-// =======================
-// PROGRESSION LOGIC
-// =======================
-function nextTarget(ex, last) {
-  const [lo, hi] = ex.range;
-
-  if (ex.imp === "cardio") {
-    if (!last) return { lastText: "None logged yet.", suggestion: `Start ${lo}-${hi} minutes.` };
-    return {
-      lastText: `${last.minutes} min`,
-      suggestion: `Add 1 minute next time.`
-    };
-  }
-
-  if (ex.imp === "bodyweight") {
-    if (!last || !last.sets) {
-      return { lastText: "None logged yet.", suggestion: `Start 3 sets in ${lo}-${hi} range.` };
-    }
-
-    const sets = last.sets;
-    const minSet = Math.min(...sets);
-    const allHitTop = sets.every(r => r >= hi);
-
-    if (allHitTop) {
-      return {
-        lastText: `[${sets.join(", ")}]`,
-        suggestion: `Increase total reps or slow tempo next time.`
-      };
-    }
-
-    const nextSets = sets.slice();
-    const idx = nextSets.indexOf(minSet);
-    nextSets[idx] = Math.min(nextSets[idx] + 1, hi);
-
-    return {
-      lastText: `[${sets.join(", ")}]`,
-      suggestion: `Aim for [${nextSets.join(", ")}].`
-    };
-  }
-
-  if (!last || !last.sets) {
-    return { lastText: "None logged yet.", suggestion: `Start in ${lo}-${hi} rep range.` };
-  }
-
-  const sets = last.sets;
-  const lastWeight = last.weight;
-  const minSet = Math.min(...sets);
-  const allHitTop = sets.every(r => r >= hi);
-
-  if (allHitTop) {
-    const nextW = suggestedNextWeight(ex, lastWeight);
-    if (!nextW) return { lastText: `${lastWeight} × [${sets.join(", ")}]`, suggestion: `No heavier weight available.` };
-    return {
-      lastText: `${lastWeight} × [${sets.join(", ")}]`,
-      suggestion: `Increase to ${nextW}.`
-    };
-  }
-
-  const nextSets = sets.slice();
-  const idx = nextSets.indexOf(minSet);
-  nextSets[idx] = Math.min(nextSets[idx] + 1, hi);
-
-  return {
-    lastText: `${lastWeight} × [${sets.join(", ")}]`,
-    suggestion: `Stay at ${lastWeight} and aim for [${nextSets.join(", ")}].`
-  };
-}
-
-// =======================
 // WORKOUT BUILDER
 // =======================
-if (day === "cond") {
-  const twoHandSwing = pool.find(e => e.id === "kb_swing_2h");
-  const oneHandSwing = pool.find(e => e.id === "kb_swing_1h");
-
-  // Randomly pick one of the two
-  const chosenSwing = Math.random() < 0.5 ? twoHandSwing : oneHandSwing;
-
-  return [
-    chosenSwing,
-    pool.find(e => e.id === "kb_clean_press"),
-    pool.find(e => e.id === "pushups"),
-    pool.find(e => e.id === "crunches")
-  ].filter(Boolean);
-}
+function pickWorkoutForDay(day) {
   const pool = EXERCISES.filter(e => e.day === day);
 
   if (day === "cond") {
-    const swings = pool.filter(e => e.id.includes("swing"));
-    const randomSwing = swings[Math.floor(Math.random() * swings.length)];
+    const twoH = pool.find(e => e.id === "kb_swing_2h");
+    const oneH = pool.find(e => e.id === "kb_swing_1h");
+
+    const swing = Math.random() < 0.5 ? twoH : oneH;
 
     return [
-      randomSwing,
+      swing,
       pool.find(e => e.id === "kb_clean_press"),
       pool.find(e => e.id === "pushups"),
       pool.find(e => e.id === "crunches")
-    ];
+    ].filter(Boolean);
   }
 
   if (day === "push")
-    return [pool.find(e => e.id === "bb_bench"), pool.find(e => e.id === "db_press")];
+    return [
+      pool.find(e => e.id === "bb_bench"),
+      pool.find(e => e.id === "db_press")
+    ].filter(Boolean);
 
   if (day === "pull")
-    return [pool.find(e => e.id === "bb_row"), pool.find(e => e.id === "db_curl")];
+    return [
+      pool.find(e => e.id === "bb_row"),
+      pool.find(e => e.id === "db_curl")
+    ].filter(Boolean);
 
   if (day === "legs")
     return [
@@ -244,49 +152,43 @@ if (day === "cond") {
       pool.find(e => e.id === "db_lunge"),
       pool.find(e => e.id === "kb_sumo"),
       pool.find(e => e.id === "bb_rdl")
-    ];
+    ].filter(Boolean);
 
   if (day === "cardio")
-    return [pool.find(e => e.id === "zone2")];
+    return [pool.find(e => e.id === "zone2")].filter(Boolean);
 
-  return pool.slice(0, 2);
+  return [];
 }
 
 // =======================
-// UI
+// UI RENDER
 // =======================
 const workoutDiv = document.getElementById("workout");
 const logDiv = document.getElementById("logArea");
 
 function renderWorkout(day, exercises) {
-  const history = loadHistory();
+  exercises = (exercises || []).filter(Boolean);
 
   workoutDiv.innerHTML = `<h3>${day.toUpperCase()} DAY</h3>`;
-
-  exercises.forEach(ex => {
-    const last = history[ex.id]?.last;
-    const target = nextTarget(ex, last);
-
-    workoutDiv.innerHTML += `
-      <p><strong>${ex.name}</strong><br/>
-      Range: ${ex.range[0]}-${ex.range[1]}<br/>
-      Last: ${target.lastText}<br/>
-      Next: ${target.suggestion}</p>
-    `;
-  });
-
   logDiv.innerHTML = "";
 
   exercises.forEach(ex => {
+    workoutDiv.innerHTML += `
+      <p>
+        <strong>${ex.name}</strong><br/>
+        Target: ${ex.range[0]}-${ex.range[1]}
+      </p>
+    `;
+
     logDiv.innerHTML += `
       <div>
         <h4>${ex.name}</h4>
         ${ex.imp !== "cardio" && ex.imp !== "bodyweight"
           ? `<input id="w_${ex.id}" type="number" placeholder="Weight" />`
           : ""}
-        ${ex.imp !== "cardio"
-          ? `<input id="r_${ex.id}" placeholder="Reps e.g. 12,12,10" />`
-          : `<input id="m_${ex.id}" type="number" placeholder="Minutes" />`}
+        ${ex.imp === "cardio"
+          ? `<input id="m_${ex.id}" type="number" placeholder="Minutes" />`
+          : `<input id="r_${ex.id}" placeholder="Reps e.g. 12,12,10" />`}
         <button onclick="logExercise('${ex.id}')">Log</button>
       </div>
     `;
@@ -316,17 +218,12 @@ function logExercise(id) {
 }
 
 // =======================
-// BUTTON LISTENER
+// BUTTONS
 // =======================
 document.getElementById("genBtn").addEventListener("click", () => {
   const choice = document.getElementById("dayType")?.value || "auto";
 
-  let day;
-  if (choice === "auto") {
-    day = nextDay();
-  } else {
-    day = choice;
-  }
+  let day = choice === "auto" ? nextDay() : choice;
 
   renderWorkout(day, pickWorkoutForDay(day));
 });
