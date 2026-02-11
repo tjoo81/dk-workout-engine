@@ -122,21 +122,26 @@
   // -----------------------
   // Workout builder
   // -----------------------
-  function pickWorkoutForDay(day) {
-    const pool = EXERCISES.filter(e => e.day === day);
+function pickWorkoutForDay(day) {
+  const pool = EXERCISES.filter(e => e.day === day).filter(Boolean);
 
-    if (day === "cond") {
-      const twoH = pool.find(e => e.id === "kb_swing_2h");
-      const oneH = pool.find(e => e.id === "kb_swing_1h");
-      const swing = (Math.random() < 0.5 ? twoH : oneH);
+  // Conditioning: 1 swing type (1H OR 2H) + the rest
+  if (day === "cond") {
+    const twoH = pool.find(e => e.id === "kb_swing_2h");
+    const oneH = pool.find(e => e.id === "kb_swing_1h");
+    const swing = (Math.random() < 0.5 ? twoH : oneH);
 
-      return [
-        swing,
-        pool.find(e => e.id === "kb_clean_press"),
-        pool.find(e => e.id === "pushups_cond"),
-        pool.find(e => e.id === "crunches")
-      ].filter(Boolean);
-    }
+    return [
+      swing,
+      pool.find(e => e.id === "kb_clean_press"),
+      pool.find(e => e.id === "pushups_cond") || pool.find(e => e.id === "pushups") || null,
+      pool.find(e => e.id === "crunches")
+    ].filter(Boolean);
+  }
+
+  // All other days: return EVERYTHING tagged for that day
+  return pool;
+}
 
     // For all other days: show ALL exercises for that day
     return pool.filter(Boolean);
