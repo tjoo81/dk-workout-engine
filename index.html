@@ -1,107 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Garage Gym Planner</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Equipment Manager</title>
 
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background:#111; color:#eee; margin:0; padding:20px; }
-    .wrap { max-width: 700px; margin:auto; }
-    .card { background:#1c1c1c; padding:20px; border-radius:12px; margin-bottom:20px; }
-    button { padding:10px 16px; border-radius:8px; border:none; cursor:pointer; margin-right:10px; background:#2e7dff; color:white; }
-    button.ghost { background:#444; }
-    input, select { width:100%; padding:8px; margin-bottom:10px; border-radius:6px; border:1px solid #333; background:#222; color:white; }
-    h1, h2, h3 { margin-top:0; }
-    .small { font-size:0.85rem; opacity:0.7; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; }
-    .row > * { flex: 1; min-width: 180px; }
-  </style>
+<style>
+  body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#111; color:#eee; padding:20px; }
+  .wrap { max-width:760px; margin:auto; }
+  .card { background:#1c1c1c; padding:18px; border-radius:12px; margin-bottom:16px; }
+  h1 { margin: 0 0 12px; }
+  h2 { margin: 0 0 10px; font-size: 1.05rem; }
+  .small { font-size:.85rem; opacity:.7; margin-top:6px; }
+  label { display:block; margin:10px 0 6px; font-weight:600; }
+  input, select { width:100%; padding:10px; border-radius:8px; border:1px solid #333; background:#222; color:#fff; }
+  .row { display:grid; grid-template-columns: 1.2fr .9fr .7fr; gap:10px; align-items:center; margin:10px 0; }
+  .row .btn { width:100%; }
+  .btnbar { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  button { padding:10px 14px; border-radius:10px; border:none; cursor:pointer; background:#2e7dff; color:white; }
+  button.ghost { background:#444; }
+  button.danger { background:#b33a3a; }
+  a { color:#2e7dff; text-decoration:none; }
+  hr { border:none; border-top:1px solid #333; margin:14px 0; }
+</style>
 </head>
 
 <body>
-  <div class="wrap">
-    <h1>Garage Gym Planner</h1>
-    <p id="status" class="small">Status: loading…</p>
+<div class="wrap">
+  <h1>Equipment Manager</h1>
+  <p class="small">This page saves to your device (localStorage). You can redo the UI later without losing data as long as the key stays the same.</p>
 
-    <div class="card">
-  <h2>Interval Timer (EMOM)</h2>
-
-  <label>Total Minutes</label>
-  <input id="timerMinutes" type="number" value="30" />
-
-  <div style="font-size:1.4rem; margin:10px 0;">
-    <strong id="timerExercise">Goblet Squats</strong>
+  <!-- KETTLEBELLS -->
+  <div class="card">
+    <h2>🔔 Kettlebells</h2>
+    <div id="kbList"></div>
+    <div class="btnbar">
+      <button id="addKb">+ Add kettlebell</button>
+    </div>
+    <p class="small">Example: 50 lb × 2 (for double carries / double front rack)</p>
   </div>
 
-  <div style="font-size:2.4rem; margin:10px 0;">
-    <span id="timerDisplay">01:00</span>
+  <!-- DUMBBELLS -->
+  <div class="card">
+    <h2>🏋️ Dumbbells</h2>
+    <label>Type</label>
+    <select id="dbType">
+      <option value="pairs" selected>Pairs</option>
+      <option value="singles">Singles</option>
+    </select>
+
+    <div id="dbList"></div>
+    <div class="btnbar">
+      <button id="addDb">+ Add dumbbell</button>
+    </div>
+    <p class="small">Your setup: 30/35/40 pairs + one single 25.</p>
   </div>
 
-  <button id="startTimer">Start</button>
-  <button id="pauseTimer" class="ghost">Pause</button>
-  <button id="resetTimer" class="ghost">Reset</button>
+  <!-- PLATES -->
+  <div class="card">
+    <h2>⚪ Plates</h2>
+    <div id="plateList"></div>
+    <div class="btnbar">
+      <button id="addPlate">+ Add plate size</button>
+    </div>
+    <p class="small">Use quantity as “number of plates” (not pairs). Example: 45 × 2 means two 45s.</p>
+  </div>
 
-  <p id="timerStatus" class="small"></p>
+  <!-- BARS -->
+  <div class="card">
+    <h2>— Bars</h2>
+    <label>Olympic bar (lbs)</label>
+    <input id="olympicBar" placeholder="45" />
+
+    <label>EZ curl bar (lbs)</label>
+    <input id="ezBar" placeholder="20" />
+
+    <label>Other bars (optional notes)</label>
+    <input id="otherBars" placeholder="Trap bar, curl bar, etc" />
+
+    <p class="small">If you don’t know exact EZ bar weight, you can leave it blank for now.</p>
+  </div>
+
+  <div class="card">
+    <div class="btnbar">
+      <button id="save">Save ✅</button>
+      <button id="reset" class="danger">Reset to defaults</button>
+      <button id="wipe" class="ghost">Wipe saved data</button>
+    </div>
+    <p id="status" class="small"></p>
+  </div>
+
+  <a href="index.html">← Back to Workout</a>
 </div>
 
-    <div class="card">
-      <h2>Today’s Workout</h2>
+<script>
+const KEY = "dk_equipment_v1";
 
-      <label for="dayType" class="small">Workout type</label>
-      <select id="dayType">
-        <option value="auto" selected>Auto (recommended)</option>
-        <option value="push">Push</option>
-        <option value="pull">Pull</option>
-        <option value="legs">Legs</option>
-        <option value="cond">Conditioning</option>
-        <option value="cardio">Cardio</option>
-      </select>
+// ---------- helpers ----------
+const qtySelect = (value=1, max=6) => {
+  const sel = document.createElement("select");
+  for (let i=1; i<=max; i++) {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = String(i);
+    if (i === value) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  return sel;
+};
 
-      <div class="row">
-        <button id="genBtn">Generate Workout</button>
-        <button id="resetCycleBtn" class="ghost">Reset Rotation</button>
-      </div>
+function makeRow({weight=0, qty=1}, onRemove) {
+  const wrap = document.createElement("div");
+  wrap.className = "row";
 
-      <div id="workout"></div>
-    </div>
+  const w = document.createElement("input");
+  w.type = "number";
+  w.min = "0";
+  w.step = "0.5";
+  w.placeholder = "Weight (lbs)";
+  w.value = weight ? String(weight) : "";
 
-    <div class="card">
-      <h2>Log Results</h2>
-      <div id="logArea"></div>
-    </div>
+  const q = qtySelect(qty, 8);
 
-    <div class="card">
-  <h2>Equipment</h2>
-  <a href="equipment.html">Edit equipment →</a>
-</div>
+  const rm = document.createElement("button");
+  rm.className = "ghost btn";
+  rm.textContent = "Remove";
+  rm.onclick = onRemove;
 
+  wrap.appendChild(w);
+  wrap.appendChild(q);
+  wrap.appendChild(rm);
 
-      <label>Dumbbells</label>
-      <input id="eq_dbs" placeholder="30,35,40" />
+  return { wrap, w, q };
+}
 
-      <a href="equipment.html" class="small">Edit equipment →</a>
+function normalizeItems(items) {
+  return (items || [])
+    .map(x => ({ weight: Number(x.weight), qty: Number(x.qty || 1) }))
+    .filter(x => Number.isFinite(x.weight) && x.weight > 0 && Number.isFinite(x.qty) && x.qty > 0)
+    .sort((a,b) => a.weight - b.weight);
+}
 
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg;
+}
 
-      <label>Kettlebells</label>
-      <input id="eq_kbs" placeholder="30,40,50,70" />
+// ---------- state ----------
+let state = {
+  kettlebells: [],
+  dumbbells: { pairs: [], singles: [] },
+  plates: [],
+  bars: { olympic: 45, ez: null, other: "" }
+};
 
-      <label>Barbell increment</label>
-      <select id="eq_bar_inc">
-        <option value="2.5">2.5</option>
-        <option value="5" selected>5</option>
-        <option value="10">10</option>
-      </select>
+// ---------- renderers ----------
+function renderKB() {
+  const list = document.getElementById("kbList");
+  list.innerHTML = "";
+  state.kettlebells.forEach((item, idx) => {
+    const row = makeRow(item, () => { state.kettlebells.splice(idx,1); renderKB(); });
+    row.wrap.dataset.kind = "kb";
+    row.wrap.dataset.idx = idx;
+    list.appendChild(row.wrap);
+  });
+}
 
-      <div class="row">
-        <button id="eq_save">Save Equipment</button>
-        <button id="eq_reset" class="ghost">Reset Equipment</button>
-      </div>
+function renderDB() {
+  const list = document.getElementById("dbList");
+  list.innerHTML = "";
 
-      <p id="eq_status" class="small"></p>
-    </div>
-  </div>
+  const type = document.getElementById("dbType").value; // pairs or singles
+  const arr = state.dumbbells[type];
 
-  <script src="script.js?v=777"></script>
-</body>
-</html>
+  arr.forEach((item, idx) => {
+    const row = makeRow(item, () => { arr.splice(idx,1); renderDB(); });
+    row.wrap.dataset.kind = "db";
+    row.wrap.dataset.type = type;
+    row.wrap.dataset.idx = idx;
+    list.appendChild(row.wrap);
+  });
+}
+
+function renderPlates() {
+  const list = document.getElementById("plateList");
+  list.innerHTML = "";
+  state.plates.forEach((item, idx) => {
+    const row = makeRow(item, () => { state.plates.splice(idx,1); renderPlates(); });
+    row.wrap.dataset.kind = "plate";
+    row.wrap.dataset.idx = idx;
+    list.appendChild(row.wrap);
+  });
+}
+
+// ---------- read UI back into state ----------
+function syncFromUI() {
+  // kettlebells
+  const kbRows = [...document.querySelectorAll("#kbList .row")];
+  state.kettlebells = kbRows.map(r => {
+    const inputs = r.querySelectorAll("input,select");
+    return { weight: Number(inputs[0].value), qty: Number(inputs[1].value) };
+  });
+
+  // dumbbells (only the currently displayed type list is on screen)
+  const type = document.getElementById("dbType").value;
+  const dbRows = [...document.querySelectorAll("#dbList .row")];
+  state.dumbbells[type] = dbRows.map(r => {
+    const inputs = r.querySelectorAll("input,select");
+    return { weight: Number(inputs[0].value), qty: Number(inputs[1].value) };
+  });
+
+  // plates
+  const plateRows = [...document.querySelectorAll("#plateList .row")];
+  state.plates = plateRows.map(r => {
+    const inputs = r.querySelectorAll("input,select");
+    return { weight: Number(inputs[0].value), qty: Number(inputs[1].value) };
+  });
+
+  // bars
+  const ob = document.getElementById("olympicBar").value;
+  const ez = document.getElementById("ezBar").value;
+  state.bars.olympic = ob ? Number(ob) : 45;
+  state.bars.ez = ez ? Number(ez) : null;
+  state.bars.other = document.getElementById("otherBars").value || "";
+}
+
+function save() {
+  syncFromUI();
+
+  const kettlebells = normalizeItems(state.kettlebells);
+  const dbPairs = normalizeItems(state.dumbbells.pairs);
+  const dbSingles = normalizeItems(state.dumbbells.singles);
+  const plates = normalizeItems(state.plates);
+
+  // Back-compat arrays (old generator expects these sometimes)
+  const kbs = kettlebells.map(x => x.weight);
+  const dbs = dbPairs.map(x => x.weight);
+
+  const payload = {
+    // legacy
+    dbs, kbs,
+    // structured
+    kettlebells,
+    dumbbells: { pairs: dbPairs, singles: dbSingles },
+    plates,
+    bars: {
+      olympic: Number.isFinite(state.bars.olympic) ? state.bars.olympic : 45,
+      ez: (state.bars.ez &&
