@@ -244,10 +244,11 @@ function save() {
     dumbbells: { pairs: dbPairs, singles: dbSingles },
     plates,
     bars: {
-      olympic: Number.isFinite(state.bars.olympic) ? state.bars.olympic : 45,
-      ez: (state.bars.ez &&       ez: (state.bars.ez && Number.isFinite(state.bars.ez)) ? state.bars.ez : null,
-      other: state.bars.other || ""
-    }
+  olympic: Number.isFinite(state.bars.olympic) ? state.bars.olympic : 45,
+  ez: (state.bars.ez && Number.isFinite(state.bars.ez)) ? state.bars.ez : null,
+  other: state.bars.other || ""
+}
+
   };
 
   localStorage.setItem(KEY, JSON.stringify(payload));
