@@ -11,9 +11,10 @@ body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#111;
 .card { background:#1c1c1c; padding:20px; border-radius:12px; margin-bottom:20px; }
 button { padding:10px 16px; border-radius:8px; border:none; cursor:pointer; background:#2e7dff; color:white; }
 button.ghost { background:#444; }
-input { width:100%; padding:8px; margin-bottom:10px; border-radius:6px; border:1px solid #333; background:#222; color:white; }
+input, textarea { width:100%; padding:8px; margin-bottom:10px; border-radius:6px; border:1px solid #333; background:#222; color:white; }
 .small { font-size:.85rem; opacity:.7; }
 a { color:#2e7dff; text-decoration:none; }
+hr { border:none; border-top:1px solid #333; margin:16px 0; }
 </style>
 </head>
 
@@ -22,13 +23,25 @@ a { color:#2e7dff; text-decoration:none; }
   <h1>Equipment</h1>
 
   <div class="card">
-    <p class="small">Comma separated numbers (lbs)</p>
+    <p class="small">Comma separated numbers (lbs). For quantities, use “weight:qty” format (example: 50:2,70:1).</p>
 
     <label>Dumbbells (pairs)</label>
-    <input id="dbs" placeholder="30,35,40" />
+    <input id="dbPairs" placeholder="30,35,40" />
 
-    <label>Kettlebells</label>
-    <input id="kbs" placeholder="30,40,50,70" />
+    <label>Dumbbells (singles)</label>
+    <input id="dbSingles" placeholder="25" />
+
+    <label>Kettlebells (optional qty)</label>
+    <input id="kbsQty" placeholder="30:1,40:1,50:2,70:1" />
+
+    <hr />
+
+    <label class="small">Barbell (optional)</label>
+    <label>Bar weight (lbs)</label>
+    <input id="barWeight" placeholder="45" />
+
+    <label>Plates (weight:qty)</label>
+    <input id="plates" placeholder="45:2,35:2,25:2,10:2,5:2,2.5:2" />
 
     <button id="save">Save Equipment</button>
     <button id="reset" class="ghost">Reset</button>
@@ -42,17 +55,86 @@ a { color:#2e7dff; text-decoration:none; }
 <script>
 const KEY = "dk_equipment_v1";
 
+// --- helpers ---
+function parseCsvNums(str) {
+  return (str || "")
+    .split(",")
+    .map(x => +x.trim())
+    .filter(n => Number.isFinite(n) && n > 0);
+}
+
+function parseWeightQty(str) {
+  // accepts "50:2,70:1" OR "50,70" (defaults qty=1)
+  const out = [];
+  (str || "").split(",").map(x => x.trim()).filter(Boolean).forEach(part => {
+    const [wRaw, qRaw] = part.split(":").map(s => (s || "").trim());
+    const w = Number(wRaw);
+    const q = qRaw === undefined || qRaw === "" ? 1 : Number(qRaw);
+    if (Number.isFinite(w) && w > 0 && Number.isFinite(q) && q > 0) {
+      out.push({ weight: w, qty: q });
+    }
+  });
+  // sort ascending
+  out.sort((a,b) => a.weight - b.weight);
+  return out;
+}
+
+function weightQtyToString(arr) {
+  if (!Array.isArray(arr) || !arr.length) return "";
+  return arr.map(x => `${x.weight}:${x.qty}`).join(",");
+}
+
+// --- load/save ---
 function load() {
   const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
-  document.getElementById("dbs").value = saved.dbs?.join(",") || "30,35,40";
-  document.getElementById("kbs").value = saved.kbs?.join(",") || "30,40,50,70";
+
+  // Backward compatible defaults
+  const dbsLegacy = saved.dbs || [30,35,40];
+  const kbsLegacy = saved.kbs || [30,40,50,70];
+
+  // New fields (v2-ish)
+  const dbPairs = saved.dbPairs || dbsLegacy;
+  const dbSingles = saved.dbSingles || []; // you have 25 single
+  const kbsQty = saved.kbsQty || kbsLegacy.map(w => ({ weight: w, qty: 1 }));
+
+  const barWeight = saved.barWeight ?? 45;
+  const plates = saved.plates || [
+    { weight: 45, qty: 2 },
+    { weight: 35, qty: 2 },
+    { weight: 25, qty: 2 },
+    { weight: 10, qty: 2 },
+    { weight: 5, qty: 2 },
+    { weight: 2.5, qty: 2 },
+  ];
+
+  document.getElementById("dbPairs").value = (dbPairs || []).join(",") || "30,35,40";
+  document.getElementById("dbSingles").value = (dbSingles || []).join(",") || "25";
+  document.getElementById("kbsQty").value = weightQtyToString(kbsQty) || "30:1,40:1,50:2,70:1";
+
+  document.getElementById("barWeight").value = String(barWeight);
+  document.getElementById("plates").value = weightQtyToString(plates) || "45:2,35:2,25:2,10:2,5:2,2.5:2";
 }
 
 function save() {
-  const dbs = document.getElementById("dbs").value.split(",").map(x => +x.trim()).filter(Boolean);
-  const kbs = document.getElementById("kbs").value.split(",").map(x => +x.trim()).filter(Boolean);
+  const dbPairs = parseCsvNums(document.getElementById("dbPairs").value);
+  const dbSingles = parseCsvNums(document.getElementById("dbSingles").value);
+  const kbsQty = parseWeightQty(document.getElementById("kbsQty").value);
 
-  localStorage.setItem(KEY, JSON.stringify({ dbs, kbs }));
+  const barWeight = Number(document.getElementById("barWeight").value) || 45;
+  const plates = parseWeightQty(document.getElementById("plates").value);
+
+  // Keep legacy arrays too (helps avoid breaking existing generator logic)
+  const dbs = dbPairs;
+  const kbs = kbsQty.map(x => x.weight);
+
+  localStorage.setItem(KEY, JSON.stringify({
+    // legacy
+    dbs, kbs,
+    // new
+    dbPairs, dbSingles, kbsQty,
+    barWeight, plates
+  }));
+
   document.getElementById("status").textContent = "Saved ✅";
 }
 
