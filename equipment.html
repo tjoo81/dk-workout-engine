@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Equipment Settings</title>
+
+<style>
+body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#111; color:#eee; padding:20px; }
+.wrap { max-width:600px; margin:auto; }
+.card { background:#1c1c1c; padding:20px; border-radius:12px; margin-bottom:20px; }
+button { padding:10px 16px; border-radius:8px; border:none; cursor:pointer; background:#2e7dff; color:white; }
+button.ghost { background:#444; }
+input { width:100%; padding:8px; margin-bottom:10px; border-radius:6px; border:1px solid #333; background:#222; color:white; }
+.small { font-size:.85rem; opacity:.7; }
+a { color:#2e7dff; text-decoration:none; }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>Equipment</h1>
+
+  <div class="card">
+    <p class="small">Comma separated numbers (lbs)</p>
+
+    <label>Dumbbells (pairs)</label>
+    <input id="dbs" placeholder="30,35,40" />
+
+    <label>Kettlebells</label>
+    <input id="kbs" placeholder="30,40,50,70" />
+
+    <button id="save">Save Equipment</button>
+    <button id="reset" class="ghost">Reset</button>
+
+    <p id="status" class="small"></p>
+  </div>
+
+  <a href="index.html">← Back to Workout</a>
+</div>
+
+<script>
+const KEY = "dk_equipment_v1";
+
+function load() {
+  const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+  document.getElementById("dbs").value = saved.dbs?.join(",") || "30,35,40";
+  document.getElementById("kbs").value = saved.kbs?.join(",") || "30,40,50,70";
+}
+
+function save() {
+  const dbs = document.getElementById("dbs").value.split(",").map(x => +x.trim()).filter(Boolean);
+  const kbs = document.getElementById("kbs").value.split(",").map(x => +x.trim()).filter(Boolean);
+
+  localStorage.setItem(KEY, JSON.stringify({ dbs, kbs }));
+  document.getElementById("status").textContent = "Saved ✅";
+}
+
+function reset() {
+  localStorage.removeItem(KEY);
+  load();
+  document.getElementById("status").textContent = "Reset to defaults";
+}
+
+document.getElementById("save").onclick = save;
+document.getElementById("reset").onclick = reset;
+
+load();
+</script>
+</body>
+</html>
