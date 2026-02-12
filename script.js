@@ -1,4 +1,14 @@
 (() => {
+
+  function getEquipment() {
+  const saved = JSON.parse(localStorage.getItem("dk_equipment_v1") || "{}");
+
+  return {
+    dbs: saved.dbs || [30,35,40],
+    kbs: saved.kbs || [30,40,50,70]
+  };
+}
+
   const $ = (id) => document.getElementById(id);
 
   // -----------------------------
