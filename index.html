@@ -245,4 +245,96 @@ function save() {
     plates,
     bars: {
       olympic: Number.isFinite(state.bars.olympic) ? state.bars.olympic : 45,
-      ez: (state.bars.ez &&
+      ez: (state.bars.ez &&       ez: (state.bars.ez && Number.isFinite(state.bars.ez)) ? state.bars.ez : null,
+      other: state.bars.other || ""
+    }
+  };
+
+  localStorage.setItem(KEY, JSON.stringify(payload));
+  setStatus("Saved ✅");
+}
+
+function load() {
+  const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+
+  // defaults tailored to YOU
+  const defaults = {
+    kettlebells: [{weight:30,qty:1},{weight:40,qty:1},{weight:50,qty:2},{weight:70,qty:1}],
+    dumbbells: {
+      pairs: [{weight:30,qty:2},{weight:35,qty:2},{weight:40,qty:2}],
+      singles: [{weight:25,qty:1}]
+    },
+    plates: [{weight:45,qty:2},{weight:35,qty:2},{weight:25,qty:2},{weight:10,qty:2},{weight:5,qty:2},{weight:2.5,qty:2}],
+    bars: { olympic: 45, ez: null, other: "" }
+  };
+
+  state.kettlebells =
+    saved.kettlebells ||
+    (saved.kbs ? saved.kbs.map(w => ({weight:w,qty:1})) : defaults.kettlebells);
+
+  state.dumbbells =
+    saved.dumbbells ||
+    {
+      pairs: (saved.dbs ? saved.dbs.map(w => ({weight:w,qty:2})) : defaults.dumbbells.pairs),
+      singles: defaults.dumbbells.singles
+    };
+
+  state.plates = saved.plates || defaults.plates;
+  state.bars = saved.bars || defaults.bars;
+
+  // Bars fields
+  document.getElementById("olympicBar").value = state.bars.olympic ?? 45;
+  document.getElementById("ezBar").value = state.bars.ez ?? "";
+  document.getElementById("otherBars").value = state.bars.other ?? "";
+
+  renderKB();
+  renderDB();
+  renderPlates();
+
+  setStatus(saved && Object.keys(saved).length ? "Loaded saved equipment ✅" : "Loaded defaults");
+}
+
+function resetDefaults() {
+  localStorage.removeItem(KEY);
+  load();
+  setStatus("Reset to defaults ✅");
+}
+
+function wipeAll() {
+  localStorage.removeItem(KEY);
+  state = { kettlebells: [], dumbbells:{pairs:[],singles:[]}, plates:[], bars:{olympic:45,ez:null,other:""} };
+  renderKB(); renderDB(); renderPlates();
+  document.getElementById("olympicBar").value = 45;
+  document.getElementById("ezBar").value = "";
+  document.getElementById("otherBars").value = "";
+  setStatus("Wiped saved data 🧼");
+}
+
+// ---------- wire up ----------
+document.getElementById("addKb").onclick = () => {
+  state.kettlebells.push({weight:0,qty:1});
+  renderKB();
+};
+
+document.getElementById("addDb").onclick = () => {
+  const type = document.getElementById("dbType").value;
+  state.dumbbells[type].push({weight:0,qty: type === "pairs" ? 2 : 1});
+  renderDB();
+};
+
+document.getElementById("dbType").onchange = () => renderDB();
+
+document.getElementById("addPlate").onclick = () => {
+  state.plates.push({weight:0,qty:2});
+  renderPlates();
+};
+
+document.getElementById("save").onclick = save;
+document.getElementById("reset").onclick = resetDefaults;
+document.getElementById("wipe").onclick = wipeAll;
+
+load();
+</script>
+</body>
+</html>
+
